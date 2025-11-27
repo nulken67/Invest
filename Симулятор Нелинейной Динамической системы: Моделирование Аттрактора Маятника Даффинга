@@ -1,0 +1,66 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
+
+
+DELTA=0.15
+ALPHA=1.0
+GAMMA=1.2
+OMEGA=0.8
+
+
+X0 = [0.0, 0.0]
+T_SPAN = [0, 800]
+T_POINTS = np.linspace(T_SPAN[0], T_SPAN[1], 80000)
+
+def nonlinear_pendulum(t, X):
+    x1, x2 = X
+
+    dx1dt = x2
+    dx2dt = GAMMA * np.cos(OMEGA * t) - DELTA * x2 - ALPHA * np.sin(x1)
+    return [dx1dt, dx2dt]
+
+print("Начало численного решения ОДУ...")
+
+solution = solve_ivp(nonlinear_pendulum, T_SPAN, X0, t_eval=T_POINTS, method='RK45')
+print(f"Решение завершено. Получено {len(solution.t)} точек.")
+
+theta_unwrapped = solution.y[0]
+theta=np.arctan2(np.sin(theta_unwrapped), np.cos(theta_unwrapped))
+dtdhelta = solution.y[1]
+time = solution.t
+
+
+
+
+plt.figure(figsize=(15, 6))
+
+plt.subplot(1, 2, 1 )
+plt.plot(time, theta, label='$\theta(t)$', color='blue', linewidth = 0.8)
+plt.title(f'Угол $\\theta$ во времени (Параметры: $\\gamma={GAMMA}, \\delta={DELTA}, \\alpha={ALPHA}, \\omega={OMEGA}$)')
+plt.xlabel('Время $t$')
+plt.ylabel('Угол $\\theta$ (радианы)')
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.xlim(T_SPAN[1]-150, T_SPAN[1])
+
+
+plt.subplot(1, 2, 2)
+
+start_index = np.where(time >= 200)[0][0] if np.any(time >= 200) else 0
+plt.plot(theta[start_index:], dtdhelta[start_index:], label='Фазовый портрет', color='red', linewidth = 0.5, alpha=0.8)
+
+plt.xlim(-np.pi, np.pi)
+plt.ylim(-3.0, 3.0)
+
+plt.title('Фазовый портрет (Угловая скорость vs Угол)')
+plt.xlabel('Угол $\\theta$ (радианы)')
+plt.ylabel('Угловая скорость $d\\theta/dt$ (радианы/сек)')
+plt.grid(True, linestyle='--', alpha=0.6)
+
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.suptitle('Симулятор Нелинейного Маятника с вынуждающей силой (модель Даффинга)', fontsize=16, fontweight='bold')
+plt.show()
+
+
+
