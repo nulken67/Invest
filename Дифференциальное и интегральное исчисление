@@ -1,0 +1,89 @@
+# analytical_engine.py
+
+from sympy import symbols, diff, integrate, solve, sympify # Добавляем sympify
+
+class AnalyticalEngine:
+    def __init__(self):
+        # Определяем основные символы
+        self.x, self.y, self.z, self.t = symbols('x y z t')
+
+    def calculate_derivative(self, expression_str, variable_str):
+        """Вычисляет символьную производную."""
+        try:
+            variable = symbols(variable_str)
+            expression = sympify(expression_str) 
+            result = diff(expression, variable)
+            return str(result)
+        except Exception as e:
+            return f"Ошибка при дифференцировании: {e}"
+
+    def calculate_definite_integral(self, expression_str, variable_str, lower, upper):
+        """
+        Вычисляет определенный интеграл: 
+        ∫[lower, upper] expression d(variable)
+        """
+        try:
+            # 1. Преобразуем строковые входные данные в объекты SymPy
+            variable = symbols(variable_str)
+            expression = sympify(expression_str)
+            lower_bound = sympify(lower)
+            upper_bound = sympify(upper)
+
+            # 2. Вычисляем определенный интеграл. 
+            # Аргументы: выражение, (переменная, нижняя граница, верхняя граница)
+            result = integrate(expression, (variable, lower_bound, upper_bound))
+            
+            # 3. Для удобства вывода, оцениваем результат численно, если это возможно
+            if result.is_number:
+                 return f"{result} (≈ {result.evalf():.4f})"
+            else:
+                 return str(result)
+
+        except Exception as e:
+            return f"Ошибка при интегрировании: {e}"
+
+# --- Основная логика калькулятора ---
+
+def run_calculator():
+    """Основной цикл взаимодействия с пользователем."""
+    engine = AnalyticalEngine()
+    print("🤖 Символьный Аналитический Калькулятор (SymPy)")
+    print("--------------------------------------------------")
+
+    while True:
+        print("\nВыберите операцию:")
+        print("1: Производная")
+        print("2: Определенный Интеграл")
+        print("exit: Выход")
+        
+        choice = input("Ваш выбор (1/2/exit): ").lower()
+
+        if choice == 'exit':
+            print("👋 До свидания!")
+            break
+
+        if choice == '1':
+            ## --- Ввод для Производной ---
+            print("\n--- Режим Производной ---")
+            expression = input("Введите выражение (например, x**3 + sin(x)): ")
+            variable = input("Введите переменную дифференцирования (например, x): ")
+            
+            result = engine.calculate_derivative(expression, variable)
+            print(f"\n✅ Результат: d/d({variable})[{expression}] = {result}")
+            
+        elif choice == '2':
+            ## --- Ввод для Интеграла ---
+            print("\n--- Режим Определенного Интеграла ---")
+            expression = input("Введите выражение (например, x**2): ")
+            variable = input("Введите переменную интегрирования (например, x): ")
+            lower = input("Введите нижний предел (например, 0): ")
+            upper = input("Введите верхний предел (например, 2): ")
+            
+            result = engine.calculate_definite_integral(expression, variable, lower, upper)
+            print(f"\n✅ Результат: Интеграл {expression} от {lower} до {upper} = {result}")
+
+        else:
+            print("⚠️ Неверный выбор. Пожалуйста, введите 1, 2 или exit.")
+
+if __name__ == "__main__":
+    run_calculator()
