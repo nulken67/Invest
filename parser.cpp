@@ -1,31 +1,36 @@
 #include <iostream>
 #include <string>
 #include <curl/curl.h>
+#include "json.hpp"
 
-// Функция-клиент для cURL: принимает куски данных из сети и записывает их в строку
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+using json = nlohmann::json;
+
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t totalSize = size * nmemb;
     std::string* responseBuffer = static_cast<std::string*>(userp);
-    
-    // Дописываем полученные байты в конец нашей строки
     responseBuffer->append(static_cast<char*>(contents), totalSize);
-    
     return totalSize;
 }
 
 int main() {
-    // Инициализация cURL
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     CURL* curl = curl_easy_init();
     if (!curl) {
         std::cerr << "[ERROR] Не удалось инициализировать cURL." << std::endl;
         return 1;
     }
 
-    // Публичный API адреса Bitcoin (в формате JSON)
-    std::string url = "https://blockchain.info/rawaddr/1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+    std::string walletAddress = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+    std::string url = "https://blockchain.info/rawaddr/" + walletAddress;
     std::string rawResponse;
 
-    // Настройка параметров cURL
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rawResponse);
@@ -33,20 +38,35 @@ int main() {
 
     std::cout << "[INFO] Отправка запроса к сети..." << std::endl;
 
-    // Выполнение сетевого запроса
     CURLcode result = curl_easy_perform(curl);
 
-    // Проверка на ошибки сети
     if (result != CURLE_OK) {
         std::cerr << "[ERROR] Запрос завершился ошибкой: " 
                   << curl_easy_strerror(result) << std::endl;
     } else {
-        std::cout << "[SUCCESS] Данные успешно получены!" << std::endl;
-        std::cout << "\nСырой ответ сервера (JSON):\n" << rawResponse.substr(0, 300) << "...\n" << std::endl;
+        std::cout << "[SUCCESS] Данные успешно получены!\n" << std::endl;
+
+        try {
+            json data = json::parse(rawResponse);
+
+            long long satoshis = data["final_balance"].get<long long>();
+            int txCount = data["n_tx"].get<int>();
+            
+            double btcBalance = static_cast<double>(satoshis) / 100000000.0;
+
+            std::cout << "=== ИНФОРМАЦИЯ О КОШЕЛЬКЕ ===" << std::endl;
+            std::cout << "Адрес:            " << walletAddress << std::endl;
+            std::cout << "Всего транзакций: " << txCount << std::endl;
+            std::cout << "Баланс (Сатоши):  " << satoshis << " SAT" << std::endl;
+            std::cout << "Баланс (BTC):     " << btcBalance << " BTC" << std::endl;
+            std::cout << "==============================" << std::endl;
+
+        } catch (const json::exception& e) {
+            std::cerr << "[ERROR] Ошибка парсинга JSON: " << e.what() << std::endl;
+        }
     }
 
-    // Освобождаем ресурсы
     curl_easy_cleanup(curl);
-
     return 0;
 }
+
